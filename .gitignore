@@ -1,49 +1,127 @@
-# History files
-.Rhistory
-.Rapp.history
+# given deck excel had wrong values so this adds them in correctly
+deck <- data.frame(
+  Suit = rep(c("Hearts", "Diamonds", "Clubs", "Spades"), each = 13),
+  Name = c("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"),
+  Value = c(2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11),
+  stringsAsFactors = FALSE
+)
 
-# Session Data files
-.RData
-.RDataTmp
+# Function to shuffle the deck
+shuffle_deck <- function(deck) {
+  deck[sample(nrow(deck)), ]
+}
 
-# User-specific files
-.Ruserdata
+# Function to calculate the total value of a hand with Aces
+hand_value <- function(hand) {
+  total <- sum(hand$Value, na.rm = TRUE)  # Sum
+  num_aces <- sum(hand$Name == "A", na.rm = TRUE)  # Count Aces
+  
+  # Adjust for Aces if total is over 21
+  while (total > 21 && num_aces > 0) {
+    total <- total - 10
+    num_aces <- num_aces - 1
+  }
+  
+  total
+}
 
-# Example code in package build process
-*-Ex.R
+# Function to deal cards while also removing them from the deck
+deal_cards <- function(deck, n) {
+  dealt_cards <- deck[1:n, ]
+  remaining_deck <- deck[-(1:n), ]
+  list(dealt_cards = dealt_cards, remaining_deck = remaining_deck)
+}
 
-# Output files from R CMD build
-/*.tar.gz
+# Function for dealer's turn
+dealer_turn <- function(dealer_hand, deck) {
+  dealer_total <- hand_value(dealer_hand)
+  
+  while (dealer_total < 17) {
+    dealer_result <- deal_cards(deck, 1)
+    dealer_hand <- rbind(dealer_hand, dealer_result$dealt_cards)
+    deck <- dealer_result$remaining_deck
+    dealer_total <- hand_value(dealer_hand)
+    cat("Dealer draws:\n")
+    print(dealer_hand)
+    cat("Dealer's total: ", dealer_total, "\n")
+  }
+  
+  list(dealer_hand = dealer_hand, dealer_total = dealer_total, deck = deck)
+}
 
-# Output files from R CMD check
-/*.Rcheck/
+# Main function to play Blackjack
+play_blackjack <- function(deck) {
+  repeat {
+    deck <- shuffle_deck(deck)
+    
+    # Deal initial hands
+    player_result <- deal_cards(deck, 2)
+    player_hand <- player_result$dealt_cards
+    deck <- player_result$remaining_deck
+    
+    dealer_result <- deal_cards(deck, 2)
+    dealer_hand <- dealer_result$dealt_cards
+    deck <- dealer_result$remaining_deck
+    
+    cat("Your hand, good luck!:\n")
+    print(player_hand)
+    
+    player_total <- hand_value(player_hand)
+    cat("Your total: ", player_total, "\n")
+    
+    # Show one card of the dealer's hand and hide the other
+    cat("Dealer's hand:\n")
+    cat(dealer_hand[1, "Name"], " of ", dealer_hand[1, "Suit"], "\n", sep = "")  # Show one card
+    cat("Hidden card\n")
 
-# RStudio files
-.Rproj.user/
+    while (player_total < 21) {
+      action <- readline(prompt = "Do you want to Hit (H) or Stand (S)? ")
+      
+      if (toupper(action) == "H") {
+        player_result <- deal_cards(deck, 1)
+        player_hand <- rbind(player_hand, player_result$dealt_cards)
+        deck <- player_result$remaining_deck
+        player_total <- hand_value(player_hand)
+        cat("Your hand:\n")
+        print(player_hand)
+        cat("Your total: ", player_total, "\n")
+      } else if (toupper(action) == "S") {
+        break  # Exit the hit/stand loop
+      } else {
+        cat("Invalid input. Please enter H or S.\n")
+      }
+    }
+    
+    if (player_total > 21) {
+      cat("Bust! You lose. Go home and save some money.\n")
+    } else {
+      cat("Dealer's full hand:\n")
+      print(dealer_hand)  # Show the full dealer hand
+      
+      # Dealer's turn
+      dealer_result <- dealer_turn(dealer_hand, deck)
+      dealer_hand <- dealer_result$dealer_hand
+      dealer_total <- dealer_result$dealer_total
+      
+      cat("Final hands:\n")
+      cat("Your total: ", player_total, "\n")
+      cat("Dealer's total: ", dealer_total, "\n")
+      
+      if (dealer_total > 21 || player_total > dealer_total) {
+        cat("You win! Buy a ticket to Vegas.\n")
+      } else if (player_total < dealer_total) {
+        cat("You lose. Go home and save so money. \n")
+      } else {
+        cat("It's a tie! At least you didn't lose. \n")
+      }
+    }
+    
+    play_again <- readline(prompt = "Do you want to play again? (Y/N): ")
+    if (toupper(play_again) != "Y") {
+      break
+    }
+  }
+}
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
-
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
-
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
-
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
-
-# R Environment Variables
-.Renviron
-
-# pkgdown site
-docs/
-
-# translation temp files
-po/*~
-
-# RStudio Connect folder
-rsconnect/
+# Run the game with your existing deck
+play_blackjack(deck)
